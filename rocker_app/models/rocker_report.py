@@ -38,7 +38,7 @@ import time
 import openpyxl as op
 from openpyxl.styles import Font, Fill, Alignment
 import pandas as pd
-# from openpyxl.worksheet.table import Table, TableStyleInfo
+from openpyxl.worksheet.table import Table, TableStyleInfo
 from openpyxl.utils import get_column_letter
 import io
 
@@ -384,7 +384,10 @@ class Report(models.Model):
             fileobj.write(file)
             fileobj.seek(0)
             # workbook = op.load_workbook(fileobj, data_only=True)
-            workbook = op.load_workbook(fileobj)
+            try:
+                workbook = op.load_workbook(fileobj)
+            except Exception as e:
+                raise exceptions.ValidationError('Error opening template\n\nError text: \n' + str(e))
             _logger.debug('Using template')
         else:
             # generate empty excel
@@ -424,10 +427,12 @@ class Report(models.Model):
                 else:
                     raise exceptions.ValidationError('No DB connection')
 
-        # Refresh all pivot tables & graphs
-        # workbook.RefreshAll()
-        # pivot = ws._pivots[0] # any will do as they share the same cache
-        # pivot.cache.refreshOnLoad = True
+        # Refresh all pivot tables
+        try:
+            pivot = worksheet._pivots[0] # any will do as they share the same cache
+            pivot.cache.refreshOnLoad = True
+        except:
+            _logger.debug('Pivot table refresh problem')
 
         # save the  workbook
         workbook.save(output)
@@ -611,6 +616,25 @@ class Report(models.Model):
                 _logger.debug('Created New Range: ' + head + " " + my_range.attr_text)
 
             col += 1
+        style = TableStyleInfo(name="TableStyleMedium9", showFirstColumn=False,
+                               showLastColumn=False, showRowStripes=True, showColumnStripes=False)
+        tableref = "A1:{}{}".format(get_column_letter(cols), str(max_in_range))
+        tableName = worksheet.title
+        if not self.report_template:
+            _logger.debug('Create new table')
+            _logger.debug(tableref)
+            resTable = Table(displayName=tableName, ref=tableref)
+            resTable.tableStyleInfo = style
+            worksheet.add_table(resTable)
+        else:
+            _logger.debug('Try to update table(s)')
+            for i, tbl in enumerate(worksheet.tables):
+                _logger.debug('Sheet ' + worksheet.title + ' has a table ' + tbl )
+                if tbl == tableName:
+                    _logger.debug('Change ' + tbl )
+                    _logger.debug('Original ref: ' + worksheet.tables[tableName].ref)
+                    worksheet.tables[tableName].ref = tableref
+                    _logger.debug('Changed to: ' + worksheet.tables[tableName].ref)
 
         # end
         if con is not None:

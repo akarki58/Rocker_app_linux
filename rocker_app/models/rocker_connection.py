@@ -68,11 +68,18 @@ class rocker_connection():
                 con = mysql.connector.connect(host=_host, port=_port, database=_database, user=_user,
                                               password=_password)
             elif _driver == "oracle":
+                _logger.debug('Try Oracle')
+                _logger.debug(_user + '/' + _password + '@' + _host + ':' + _port + '/' + _sid)
                 try:
                     import cx_Oracle
-                except:
-                    raise exceptions.ValidationError('No Oracle drivers')
-                con = cx_Oracle.connect(_user + '/' + _password + '@//' + _host + ':' + _port + '/' + _sid)
+                    # cx_Oracle.init_oracle_client()
+                    con = cx_Oracle.connect(_user + '/' + _password + '@' + _host + ':' + _port + '/' + _sid)
+                except Exception as err:
+                    _logger.debug("Whoops in Oracle connect!")
+                    _logger.debug(err)
+                    raise exceptions.ValidationError('Oracle drivers\n'+err)
+
+            # con = cx_Oracle.connect("user", "passwd", "192.168.1.88:1521/xe")
             elif _driver == "sqlserver":
                 try:
                     import pyodbc
@@ -96,5 +103,6 @@ class rocker_connection():
             else:
                 raise exceptions.ValidationError('Driver not supported')
         except:
+            _logger.debug('Database connection failed')
             raise exceptions.ValidationError('Database connection failed')
         return con
