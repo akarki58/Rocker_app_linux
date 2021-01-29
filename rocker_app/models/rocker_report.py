@@ -30,6 +30,7 @@ import tempfile
 from datetime import date, datetime, timedelta
 import base64
 from . import rocker_connection
+from . import rocker_about
 import os
 import re
 import sys
@@ -220,6 +221,11 @@ class Report(models.Model):
                 'url': '/web/content/rocker.report/%s/report/%s?download=true' % (self.id, self.file_name),
             }
 
+    # ok odoo 14
+    # def write(self, vals):
+    #     _logger.debug('Rocker report write')
+    #     return super(Report, self).write(vals)
+
     def export_ppt(self, context=None):
         from pptx import Presentation
         from pptx.chart.data import CategoryChartData
@@ -341,14 +347,17 @@ class Report(models.Model):
                                                                    'file_name': odoo_filename}, ).id
         # save generated excel
         base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url')
+        _logger.debug('base_url: ' + base_url)
         permlink = base_url + '/web/login?db=' + self._cr.dbname + '&redirect=' + base_url + '/web/content/rocker.report/%s/report/%s?download=true' % (
             self.id, self.file_name)
+        _logger.debug('permlink: ' + permlink)
         execlink = self.env['ir.config_parameter'].sudo().get_param(
             'web.base.url') + '/web/login?db=' + self._cr.dbname + '&redirect=' + self.env[
                        'ir.config_parameter'].sudo().get_param(
             'web.base.url') + '/web?#model=rocker.report&view_type=list&menu_id=' + str(
             self.env.ref('rocker_app.rocker_menu').id) + '&action=' + str(
             self.env.ref('rocker_app.rocker_report_execute_request').id) + '&id=' + str(self.id)
+        _logger.debug('exec_link: ' + execlink)
         # file.seek(0)
         self.sudo().write({
             'file_name': odoo_filename,
@@ -1261,26 +1270,6 @@ class Report(models.Model):
             'view_type': 'form',
             'view_mode': 'form',
             'res_model': 'rocker.popup.wizard',
-            'views': [(view.id, 'form')],
-            'view_id': view.id,
-            'target': 'new',
-            'context': context,
-        }
-
-    @api.model
-    def _show_about(self):
-        _logger.debug('Open About ')
-        context = {}
-        context['message'] = "Rocker Reporting is nice"
-        title = 'About Rocker Reporting'
-        view = self.env.ref('rocker_app.rocker_about')
-        view_id = self.env.ref('rocker_app.rocker_about').id
-        return {
-            'name': title,
-            'type': 'ir.actions.act_window',
-            'view_type': 'form',
-            'view_mode': 'form',
-            'res_model': 'rocker.about',
             'views': [(view.id, 'form')],
             'view_id': view.id,
             'target': 'new',
