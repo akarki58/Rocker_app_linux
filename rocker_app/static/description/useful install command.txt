@@ -1,19 +1,55 @@
-/usr/lib/python3/dist-packages/odoo
+sudo apt update
+sudo apt -y upgrade
 
-No module named 'openpyxl'
-apt install python3-pip
-pip3 install openpyxl
-pip3 install pandas
+sudo reboot
 
-No module named 'pptx'
-pip3 install python-pptx
+sudo apt install postgresql postgresql-client
 
+# installed ubuntu with user odoo :-)
+cd /home/odoo		
+
+wget -O - https://nightly.odoo.com/odoo.key | sudo apt-key add -
+echo "deb http://nightly.odoo.com/14.0/nightly/deb/ ./" | sudo tee /etc/apt/sources.list.d/odoo.list
+
+sudo apt update
+sudo apt install odoo
+
+sudo mkdir /var/lib/odoo
+
+systemctl status odoo
+sudo systemctl enable --now odoo
+
+sudo reboot
+
+# odoo addons
+cd /usr/lib/python3/dist-packages/odoo/addons
+sudo mkdir rocker_app
+# maybe something else than 777 but
+sudo chmod 777 rocker_app 
+
+# odoo log
+cd /var/log/odoo
+# odoo conf
+cd /etc/odoo
+
+
+cd /home/odoo
+sudo apt install python3-pip
+sudo pip3 install openpyxl
+sudo pip3 install pandas
+sudo pip3 install python-pptxmopo
+
+
+# start odoo, create database
+# isntall note module
+# and then add reporting user rocker
 sudo -u postgres createuser --login --pwprompt rocker
 
-login with user odoo
+#login with user odoo
 psql
-GRANT CONNECT ON DATABASE database_name TO username;
-GRANT SELECT ON ALL TABLES IN SCHEMA name TO username;
+# GRANT CONNECT ON DATABASEp database_name TO username;
+# GRANT SELECT ON ALL TABLES IN SCHEMA name TO username;
+# odoo installation, dbname was odoo
 GRANT CONNECT ON DATABASE odoo TO rocker;
 GRANT SELECT ON ALL TABLES IN SCHEMA "public" TO rocker;
 
