@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
 from odoo import api, fields, models, _
+import logging
+
+
+_logger = logging.getLogger(__name__)
 
 
 class rocker_about(models.TransientModel):
@@ -28,3 +32,24 @@ class rocker_about(models.TransientModel):
 <p>
     https://www.gnu.org/licenses.
 ''')
+
+    @api.model
+    def _show_about(self):
+        _logger.debug('Open About ')
+        context = {}
+        context['message'] = "Rocker Reporting is nice"
+        title = 'About Rocker Reporting'
+        view = self.env.ref('rocker_app.rocker_about')
+        view_id = self.env.ref('rocker_app.rocker_about').id
+        return {
+            'name': title,
+            'type': 'ir.actions.act_window',
+            'view_type': 'form',
+            'view_mode': 'form',
+            'res_model': 'rocker.about',
+            'views': [(view.id, 'form')],
+            'view_id': view.id,
+            'target': 'new',
+            'context': context,
+        }
+        # return
