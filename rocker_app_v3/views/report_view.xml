@@ -154,7 +154,11 @@
         <field name="model">rocker.report</field>
         <field name="arch" type="xml">
             <search string="report_filter">
-                <filter name="filter_inactive"
+                <field name="name"/>
+                 <field name="report_application"/>
+                <field name="description"/>
+                <field name="database"/>
+               <filter name="filter_inactive"
                         string="Inactive"
                         domain="[('active','=',False)]"/>
                 <filter name="filter_active"
