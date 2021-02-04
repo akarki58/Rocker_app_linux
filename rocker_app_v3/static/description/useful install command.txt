@@ -25,7 +25,7 @@ sudo reboot
 cd /usr/lib/python3/dist-packages/odoo/addons
 sudo mkdir rocker_app_v3
 # maybe something else than 777 but
-sudo chmod 777 rocker_app_v3
+sudo chmod 777 rocker_app_v3 
 
 # odoo log
 cd /var/log/odoo

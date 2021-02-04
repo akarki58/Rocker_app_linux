@@ -31,11 +31,6 @@ from datetime import date, datetime, timedelta
 import base64
 from . import rocker_connection
 from . import rocker_about
-import os
-import re
-import sys
-import shutil
-import time
 import openpyxl as op
 from openpyxl.styles import Font, Fill, Alignment
 import pandas as pd
@@ -100,10 +95,10 @@ class Report(models.Model):
     template_name = fields.Char('Template Filename', size=64, help="")
     perma_link = fields.Char('Permanent link to latest')
     execute_link = fields.Char('Execute & download link')
-    interval_number = fields.Integer(String="Interval", default=1)
-    execute_at = fields.Float(String="Execute at (timezone=UTC)")
-    firstcall = fields.Date(String='First Execution')
-    nextcall = fields.Datetime(String='Next Execution')
+    interval_number = fields.Integer("Interval", default=1)
+    execute_at = fields.Float("Execute at (timezone=UTC)")
+    firstcall = fields.Date('First Execution')
+    nextcall = fields.Datetime('Next Execution')
     interval_type = fields.Selection(
         [('min', 'min'), ('hour', 'hour'), ('day', 'day'), ('month', 'month')], 'Execute report every', default='day')
     company_id = fields.Many2one('res.company', string='User belonging this company hierarchy can view report')
@@ -200,9 +195,11 @@ class Report(models.Model):
     email_subject = fields.Char('Subject', default='Rocker Report Notification: [NAME], [DATE]')
     email_to = fields.Char('Email To')
     email_body = fields.Text('Message Body', default='[FILENAME] has been executed at [DATETIME]<p>Cheers<br/>Rocker')
+     
+    # def write(self, vals):
+    #     _logger.debug('Rocker report write')
+    #     return super(Report, self).write(vals)
 
-    # @api.multi # odoo 13 does not use these
-    # multi, otherwise no excels
     def export_report(self, context=None):
         if self.active != True:
             raise exceptions.ValidationError('Report is not active or you are not allowed to view it!')
@@ -220,12 +217,7 @@ class Report(models.Model):
                 'name': 'report',
                 'url': '/web/content/rocker.report/%s/report/%s?download=true' % (self.id, self.file_name),
             }
-
-    # ok odoo 14
-    # def write(self, vals):
-    #     _logger.debug('Rocker report write')
-    #     return super(Report, self).write(vals)
-
+ 
     def export_ppt(self, context=None):
         from pptx import Presentation
         from pptx.chart.data import CategoryChartData
@@ -358,7 +350,6 @@ class Report(models.Model):
             self.env.ref('rocker_app_v3.rocker_menu').id) + '&action=' + str(
             self.env.ref('rocker_app_v3.rocker_report_execute_request').id) + '&id=' + str(self.id)
         _logger.debug('exec_link: ' + execlink)
-        # file.seek(0)
         self.sudo().write({
             'file_name': odoo_filename,
             'report': base64.b64encode(output.getvalue()),
@@ -370,6 +361,7 @@ class Report(models.Model):
         return True
 
     def export_xls(self, context=None):
+        worksheet = None
         filename = ''
         if not self.file_name:
             self.file_name = 'report.xlsx'
@@ -378,7 +370,6 @@ class Report(models.Model):
         odoo_filename = self.file_name.strip()
         filename = self.file_name.strip()
         sheetname = self.sheet_name.strip()
-        # temp_filename = ''
         if not odoo_filename:
             odoo_filename = 'report.xlsx'
         if not sheetname:
@@ -865,7 +856,7 @@ class Report(models.Model):
                         except Exception as e:
                             raise exceptions.ValidationError('Error in Pie Chart!\n\n' + str(e))
 
-    # chart ready lets add
+        # chart ready lets add
         if self.element == 'chart':
             add_title = False
             if pp_title:
@@ -1127,12 +1118,6 @@ class Report(models.Model):
                 #sender = 'Rocker Reporting'  # email server settings
                 # now the sender is OdooBot
                 template_obj = self.env['mail.mail']
-                #template_data = {
-                #    'subject': 'Rocker Report Notification: ' + self.name + ' is ready',
-                #    'body_html': message_body,
-                #    'email_from': sender,
-                #    'email_to': ", ".join(recipients),
-                #}
                 template_data = {
                     'subject': subject,
                     'body_html': body,
