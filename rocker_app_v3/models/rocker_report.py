@@ -31,11 +31,6 @@ from datetime import date, datetime, timedelta
 import base64
 from . import rocker_connection
 from . import rocker_about
-import os
-import re
-import sys
-import shutil
-import time
 import openpyxl as op
 from openpyxl.styles import Font, Fill, Alignment
 import pandas as pd
@@ -100,10 +95,10 @@ class Report(models.Model):
     template_name = fields.Char('Template Filename', size=64, help="")
     perma_link = fields.Char('Permanent link to latest')
     execute_link = fields.Char('Execute & download link')
-    interval_number = fields.Integer(String="Interval", default=1)
-    execute_at = fields.Float(String="Execute at (timezone=UTC)")
-    firstcall = fields.Date(String='First Execution')
-    nextcall = fields.Datetime(String='Next Execution')
+    interval_number = fields.Integer("Interval", default=1)
+    execute_at = fields.Float("Execute at (timezone=UTC)")
+    firstcall = fields.Date('First Execution')
+    nextcall = fields.Datetime('Next Execution')
     interval_type = fields.Selection(
         [('min', 'min'), ('hour', 'hour'), ('day', 'day'), ('month', 'month')], 'Execute report every', default='day')
     company_id = fields.Many2one('res.company', string='User belonging this company hierarchy can view report')
@@ -200,9 +195,11 @@ class Report(models.Model):
     email_subject = fields.Char('Subject', default='Rocker Report Notification: [NAME], [DATE]')
     email_to = fields.Char('Email To')
     email_body = fields.Text('Message Body', default='[FILENAME] has been executed at [DATETIME]<p>Cheers<br/>Rocker')
+     
+    # def write(self, vals):
+    #     _logger.debug('Rocker report write')
+    #     return super(Report, self).write(vals)
 
-    # @api.multi # odoo 13 does not use these
-    # multi, otherwise no excels
     def export_report(self, context=None):
         if self.active != True:
             raise exceptions.ValidationError('Report is not active or you are not allowed to view it!')
@@ -220,12 +217,7 @@ class Report(models.Model):
                 'name': 'report',
                 'url': '/web/content/rocker.report/%s/report/%s?download=true' % (self.id, self.file_name),
             }
-
-    # ok odoo 14
-    # def write(self, vals):
-    #     _logger.debug('Rocker report write')
-    #     return super(Report, self).write(vals)
-
+ 
     def export_ppt(self, context=None):
         from pptx import Presentation
         from pptx.chart.data import CategoryChartData
@@ -370,6 +362,7 @@ class Report(models.Model):
         return True
 
     def export_xls(self, context=None):
+        worksheet = None
         filename = ''
         if not self.file_name:
             self.file_name = 'report.xlsx'
@@ -607,9 +600,6 @@ class Report(models.Model):
         # define named range for every col
         col = 1
         for head in header:
-            # atext = 'OFFSET(' + worksheet.title + '!$' + get_column_letter(worksheet.cell(row=1,column=col).column) + \
-            #         '$2,,,COUNTIF(' + worksheet.title + '!$' + get_column_letter(worksheet.cell(row=1,column=col).column) + \
-            #         '$2:$' + get_column_letter(worksheet.cell(row=1,column=col).column) + '$' + str(max_in_range) + ',"<>"))'
             atext = 'OFFSET(' + worksheet.title + '!$' + get_column_letter(worksheet.cell(row=1,column=col).column) + \
                     '$2,,,' + str(max_in_range - 1) + ')'
             _logger.debug("Named range reference: " + atext)
@@ -865,7 +855,7 @@ class Report(models.Model):
                         except Exception as e:
                             raise exceptions.ValidationError('Error in Pie Chart!\n\n' + str(e))
 
-    # chart ready lets add
+        # chart ready lets add
         if self.element == 'chart':
             add_title = False
             if pp_title:
@@ -1092,7 +1082,6 @@ class Report(models.Model):
 
     @api.model
     def _cron_execute_report(self):
-        #                                    """)
         _process_reports = self.env.cr.execute(""" SELECT * FROM rocker_report
                      WHERE active = True
                      AND schedule_onoff = True
@@ -1107,8 +1096,7 @@ class Report(models.Model):
             # email
             if self.send_by_email == True:
                 subject = self.email_subject.strip()
-                #recipients = self.email_to.strip()
-                recipients = str(self.email_to).strip()
+                recipients = self.email_to.strip()
                 body = self.email_body.strip()
                 subject = subject.replace('[NAME]',self.name.strip())
                 subject = subject.replace('[FILENAME]',self.file_name.strip())
@@ -1120,21 +1108,10 @@ class Report(models.Model):
                 body = body.replace('[DATETIME]',datetime.now().strftime("%Y-%m-%d, %H:%M"))
 
                 recipients = ''
-                #recipients = 'antti.karki@outlook.com'
-                # recipients = self.email_to.strip()
-                recipients = str(self.email_to).strip()
+                recipients = self.email_to.strip()
 
-                #subject = 'test'
-                #body = 'test'
-                #sender = 'Rocker Reporting'  # email server settings
                 # now the sender is OdooBot
                 template_obj = self.env['mail.mail']
-                #template_data = {
-                #    'subject': 'Rocker Report Notification: ' + self.name + ' is ready',
-                #    'body_html': message_body,
-                #    'email_from': sender,
-                #    'email_to': ", ".join(recipients),
-                #}
                 template_data = {
                     'subject': subject,
                     'body_html': body,

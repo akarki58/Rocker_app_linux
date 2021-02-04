@@ -9,6 +9,12 @@ sudo apt install postgresql postgresql-client
 cd /home/odoo		
 
 wget -O - https://nightly.odoo.com/odoo.key | sudo apt-key add -
+echo "deb http://nightly.odoo.com/12.0/nightly/deb/ ./" | sudo tee /etc/apt/sources.list.d/odoo.list
+
+wget -O - https://nightly.odoo.com/odoo.key | sudo apt-key add -
+echo "deb http://nightly.odoo.com/13.0/nightly/deb/ ./" | sudo tee /etc/apt/sources.list.d/odoo.list
+
+wget -O - https://nightly.odoo.com/odoo.key | sudo apt-key add -
 echo "deb http://nightly.odoo.com/14.0/nightly/deb/ ./" | sudo tee /etc/apt/sources.list.d/odoo.list
 
 sudo apt update
@@ -25,7 +31,7 @@ sudo reboot
 cd /usr/lib/python3/dist-packages/odoo/addons
 sudo mkdir rocker_app_v3
 # maybe something else than 777 but
-sudo chmod 777 rocker_app_v3
+sudo chmod 777 rocker_app_v3 
 
 # odoo log
 cd /var/log/odoo
@@ -37,11 +43,14 @@ cd /home/odoo
 sudo apt install python3-pip
 sudo pip3 install openpyxl
 sudo pip3 install pandas
-sudo pip3 install python-pptxmopo
+sudo pip3 install python-pptx
+
+# missing from odoo
+sudo pip3 install num2words 
 
 
-# start odoo, create database
-# isntall note module
+# start odoo, create database, name = odoo
+# install note module
 # and then add reporting user rocker
 sudo -u postgres createuser --login --pwprompt rocker
 
@@ -52,7 +61,6 @@ psql
 # odoo installation, dbname was odoo
 GRANT CONNECT ON DATABASE odoo TO rocker;
 GRANT SELECT ON ALL TABLES IN SCHEMA "public" TO rocker;
-
 
 service odoo restart
 

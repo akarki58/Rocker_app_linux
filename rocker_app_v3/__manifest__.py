@@ -5,7 +5,7 @@
  'depends': ['base','web','mail'],
  'license': 'AGPL-3',
  'category': 'Extra Tools',
- 'version': '12.0.3.0.1',
+ 'version': '14.0.3.0.0',
  'data': [
   'security/rocker_security.xml',
   'security/ir.model.access.csv',
