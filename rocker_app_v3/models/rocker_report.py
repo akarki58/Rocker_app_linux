@@ -1113,12 +1113,6 @@ class Report(models.Model):
 
                  # now the sender is OdooBot
                 template_obj = self.env['mail.mail']
-                #template_data = {
-                #    'subject': 'Rocker Report Notification: ' + self.name + ' is ready',
-                #    'body_html': message_body,
-                #    'email_from': sender,
-                #    'email_to': ", ".join(recipients),
-                #}
                 template_data = {
                     'subject': subject,
                     'body_html': body,
