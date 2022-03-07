@@ -547,8 +547,8 @@ class Report(models.Model):
 
     def _populate_sql(self, con, workbook, worksheet, sql, headings, context=None):
 
-        for tbl in worksheet.tables:
-            _logger.debug('Warning: Sheet ' + worksheet.title + ' has a table ' + tbl + '. If it is overlapping with data area, Excel might be corrupted')
+        # for tbl in worksheet.tables:
+        #     _logger.debug('Warning: Sheet ' + worksheet.title + ' has a table ' + tbl + '. If it is overlapping with data area, Excel might be corrupted')
 
         _headerlist = headings.split(';')
         header = [head.strip() for head in _headerlist]
