@@ -50,9 +50,12 @@ class rocker_connection():
             if _driver == 'postgresql':
                 try:
                     import psycopg2
+                    # import sqlalchemy
                 except:
                     raise exceptions.ValidationError('No Postgres drivers')
                 con = psycopg2.connect(host=_host, port=_port, database=_database, user=_user, password=_password)
+                # con = sqlalchemy.create_engine(f"postgresql+psycopg2://{_user}:{_password}@{_host}:{_port}/{_database}")
+
             elif _driver == "mysql":
                 try:
                     import mysql.connector

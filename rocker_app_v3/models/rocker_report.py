@@ -47,6 +47,10 @@ _logger = logging.getLogger(__name__)
 # _logger.error('An ERROR message')
 # --log_level=:DEBUG
 
+@api.model
+def _lang_get(self):
+    return self.env['res.lang'].get_installed()
+
 class rocker_report_collection(models.Model):
     _name = 'rocker.report.collection'
     _description = 'Rocker Collection Reports'
@@ -73,7 +77,7 @@ class Report(models.Model):
     database = fields.Many2one('rocker.database', string='Datasource',
                                default=lambda self: self.env['rocker.database'].search([('name', '=', 'Odoo')]))
     report_ids = fields.Many2many('rocker.report', 'rocker_report_collection', 'collection_id', 'report_id',
-                                  'Collection reports:    (If Excel then check that Sheet names are unique!)',
+                                  'Check that Excel Sheet names are unique!',
                                   domain="[('report_type', '=', 'single'),('report_application','=', report_application)]")
     sequence = fields.Integer(string='Sequence', default=10)
     collection_ids = fields.Many2many('rocker.report', 'rocker_report_collection', 'report_id', 'collection_id',
@@ -195,7 +199,10 @@ class Report(models.Model):
     email_subject = fields.Char('Subject', default='Rocker Report Notification: [NAME], [DATE]')
     email_to = fields.Char('Email To')
     email_body = fields.Text('Message Body', default='[FILENAME] has been executed at [DATETIME]<p>Cheers<br/>Rocker')
-     
+
+    lang = fields.Selection(_lang_get, string='Language',
+                            help="Show data in this language if many available.")
+
     # def write(self, vals):
     #     _logger.debug('Rocker report write')
     #     return super(Report, self).write(vals)
@@ -283,7 +290,7 @@ class Report(models.Model):
             if con:
                 _logger.debug('Populate single Powerpoint report')
                 # one per page
-                slide, element_written = self._populate_pp_sql(self, con, prs, slide, page_elements, pp_title, self.select_clause, self.column_headings, cnt_report, element_written, collection)
+                slide, element_written = self._populate_pp_sql(self, con, prs, slide, page_elements, pp_title, self.select_clause, self.column_headings, cnt_report, element_written, collection, self.lang)
             else:
                 raise exceptions.ValidationError('No DB connection')
         elif self.report_type == 'collection':
@@ -313,7 +320,7 @@ class Report(models.Model):
                     _logger.debug('Report number ' +  str(cnt_report) + ' on Slide: ' + str(slides_created))
                 if con:
                     _logger.debug('PowerPoint Collection report populate')
-                    slide, element_written = self._populate_pp_sql(report, con, prs, slide, page_elements, pp_title, report.select_clause, report.column_headings, cnt_report, element_written, collection)
+                    slide, element_written = self._populate_pp_sql(report, con, prs, slide, page_elements, pp_title, report.select_clause, report.column_headings, cnt_report, element_written, collection, report.lang)
                 else:
                     raise exceptions.ValidationError('No DB connection')
                 cnt_report += 1
@@ -410,7 +417,7 @@ class Report(models.Model):
             # let's fill with data
             if con:
                 _logger.debug('Populate single report')
-                self._populate_sql(con, workbook, worksheet, self.select_clause, self.column_headings)
+                self._populate_sql(con, workbook, worksheet, self.select_clause, self.column_headings, self.lang)
             else:
                 raise exceptions.ValidationError('No DB connection')
         elif self.report_type == 'collection':
@@ -425,7 +432,7 @@ class Report(models.Model):
                 # let's fill with data
                 if con:
                     _logger.debug('Collection report populate')
-                    self._populate_sql(con, workbook, worksheet, report.select_clause, report.column_headings)
+                    self._populate_sql(con, workbook, worksheet, report.select_clause, report.column_headings, report.lang)
                 else:
                     raise exceptions.ValidationError('No DB connection')
 
@@ -545,7 +552,7 @@ class Report(models.Model):
         else:
             raise exceptions.ValidationError('Exception, No Database connection')
 
-    def _populate_sql(self, con, workbook, worksheet, sql, headings, context=None):
+    def _populate_sql(self, con, workbook, worksheet, sql, headings, language, context=None):
 
         # for tbl in worksheet.tables:
         #     _logger.debug('Warning: Sheet ' + worksheet.title + ' has a table ' + tbl + '. If it is overlapping with data area, Excel might be corrupted')
@@ -585,7 +592,7 @@ class Report(models.Model):
             i += 1
             j = 0
             for col in row:
-                worksheet.cell(row=i+1,column=j+1).value = col
+                worksheet.cell(row=i+1,column=j+1).value = self._choose_lang(language, col)
                 j += 1
         # find new max row in data range
         col = 1
@@ -598,23 +605,26 @@ class Report(models.Model):
             col += 1
 
         # define named range for every col
-        col = 1
-        for head in header:
-            atext = 'OFFSET(' + worksheet.title + '!$' + get_column_letter(worksheet.cell(row=1,column=col).column) + \
-                    '$2,,,' + str(max_in_range - 1) + ')'
-            _logger.debug("Named range reference: " + atext)
-            try:
-                my_range = workbook.defined_names[head]
-                my_range.attr_text = atext
-                _logger.debug('Modified Range: ' + head + " " + my_range.attr_text)
-            except:
-                _logger.debug('Range does not exist')
-                workbook.create_named_range(head,worksheet, '$A$2')
-                my_range = workbook.defined_names[head]
-                my_range.attr_text = atext
-                _logger.debug('Created New Range: ' + head + " " + my_range.attr_text)
-
-            col += 1
+        # col = 1
+        # for head in header:
+        #     atext = 'OFFSET(' + worksheet.title + '!$' + get_column_letter(worksheet.cell(row=1,column=col).column) + \
+        #             '$2,,,' + str(max_in_range - 1) + ')'
+        #     _logger.debug("Named range reference: " + atext)
+        #     #ToDo: korjaa range
+        #     try:
+        #         my_range = workbook.defined_names[head]
+        #         my_range.attr_text = atext
+        #         _logger.debug('Modified Range: ' + head + " " + my_range.attr_text)
+        #     except:
+        #         _logger.debug('Range does not exist')
+        #         ref = "{quote_sheetname(worksheet.title)}!{absolute_coordinate('$A$2')}"
+        #         defn = DefinedName("global_range", attr_text=ref)
+        #         workbook.create_named_range(head,worksheet, '$A$2')
+        #         my_range = workbook.defined_names[head]
+        #         my_range.attr_text = atext
+        #         _logger.debug('Created New Range: ' + head + " " + my_range.attr_text)
+        #
+        #     col += 1
         style = TableStyleInfo(name="TableStyleMedium9", showFirstColumn=False,
                                showLastColumn=False, showRowStripes=True, showColumnStripes=False)
         tableref = "A1:{}{}".format(get_column_letter(cols), str(max_in_range))
@@ -640,7 +650,7 @@ class Report(models.Model):
             con.close()
         return True
 
-    def _populate_pp_sql(self, report, con, prs, slide, page_elements, pp_title, sql, headings, cnt_report, last_element_written, collection, context=None):
+    def _populate_pp_sql(self, report, con, prs, slide, page_elements, pp_title, sql, headings, cnt_report, last_element_written, collection, language, context=None):
         from pptx.enum.chart import XL_CHART_TYPE
         from pptx.enum.chart import XL_LEGEND_POSITION
         from pptx.enum.chart import XL_LABEL_POSITION
@@ -672,17 +682,21 @@ class Report(models.Model):
         if self.element == 'chart':
             if self.chart_type == '15':
                 from pptx.chart.data import BubbleChartData
+                _logger.debug('BubbleChart')
                 chart_data = BubbleChartData()
             elif self.chart_type in ['-4169','74','75','72','73']:
                 from pptx.chart.data import XyChartData
+                _logger.debug('XYChart')
                 chart_data = XyChartData()
             else:
                 from pptx.chart.data import CategoryChartData
+                _logger.debug('CategoryChart')
                 chart_data = CategoryChartData()
                 categories = header   # but first column contains series
                 categories.pop(0)
                 if self.chart_type not in ['99995', '999969']:   # categories from row data specialities
                     chart_data.categories = categories
+                    _logger.debug(str(categories))
                 else:
                     categories = []
 
@@ -695,8 +709,21 @@ class Report(models.Model):
             raise exceptions.ValidationError('Error in Select clause!\n\n' + str(e))
 
         records = cur.fetchall()
+        _logger.debug('Records: ' )
+        _logger.debug(records)
+        # language selection
+        list_records = list(records)
+        for i in range(len(list_records)):
+            list_row = list(list_records[i])
+            for j in range(len(list_row)):
+                list_row[j] = self._choose_lang(language, list_row[j])
+                # _logger.debug('List_row: ')
+                _logger.debug(list_row[j])
+            list_records[i] = tuple(list_row)
+        _logger.debug('List_Recrds: ' )
+        _logger.debug(list_records)
+        records = tuple(list_records)
         i = len(records)
-
         j = 0
         r = 0
         prev_seriesname = ''
@@ -764,6 +791,7 @@ class Report(models.Model):
                 for col in row:
                     cell = table.cell(r, c)
                     cell.text = str(row[c])
+                    # cell.text = self._choose_lang(language, row[c])
                     run = table.cell(r, c).text_frame.paragraphs[0].runs[0]
                     run.font.size = Pt(font_size)
                     c = c + 1
@@ -774,6 +802,7 @@ class Report(models.Model):
                     _logger.debug('Bubble chart 15 ')
                     #                #series_1.add_data_point(0.7, 2.7, 10)
                     seriesname = str(row[0])
+                    _logger.debug('seriesname: ')
                     _logger.debug(seriesname)
                     valuelist = list(row)
                     valuelist.pop(0) # series name taken away
@@ -824,7 +853,11 @@ class Report(models.Model):
                     except Exception as e:
                         raise exceptions.ValidationError('Error in XY Chart!\n\n' + str(e))
                 else:
+                    # _logger.debug('row: ')
+                    # _logger.debug(row)
                     series = str(row[0])
+                    # series = self._choose_lang(language, row[0])
+                    _logger.debug('series: ')
                     _logger.debug(series)
                     valuelist = list(row)
                     valuelist.pop(0) # series name taken away
@@ -975,6 +1008,27 @@ class Report(models.Model):
             con.close()
         #return True
         return slide, element_written
+
+    def _choose_lang(self, language, data):
+        # todo language
+        col_data = ''
+        if type(data) is dict:
+            # _logger.debug('Dict: ' + str(data))
+            if language:
+                # _logger.debug('Language: ' + language)
+                if language in data:
+                    col_data = data[language]
+                else:
+                    col_data = list(data.values())[0]
+                # _logger.debug('Language col taken: ' + col_data)
+
+            else:
+                # _logger.debug('NO Language taking first: ' + list(data.values())[0])
+                col_data = list(data.values())[0]
+        else:
+            # _logger.debug('Str or int: ' + str(data))
+            return data
+        return col_data
 
     def _find_place(self, page_elements, element_written, pp_title):
         from pptx.util import Pt

@@ -4,8 +4,8 @@
  'author': 'Antti Kärki',
  'depends': ['base','web','mail'],
  'license': 'AGPL-3',
- 'category': 'Extra Tools',
- 'version': '15.0.3.0.1',
+ 'category': 'Rocker/Reporting',
+ 'version': '16.0.3.0.1',
  'data': [
   'security/rocker_security.xml',
   'security/ir.model.access.csv',
