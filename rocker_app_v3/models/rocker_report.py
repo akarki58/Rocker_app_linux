@@ -36,6 +36,9 @@ from openpyxl.styles import Font, Fill, Alignment
 import pandas as pd
 from openpyxl.worksheet.table import Table, TableStyleInfo
 from openpyxl.utils import get_column_letter
+from openpyxl.workbook.defined_name import DefinedName
+from openpyxl.utils import quote_sheetname, absolute_coordinate
+
 import io
 
 
@@ -582,6 +585,7 @@ class Report(models.Model):
             for j in range (1,len(header)+1):
                 worksheet.cell(row=i,column=j).value = None
         _logger.debug ("Adding data to " + worksheet.title)
+        #todo use SQLAlchemy
         try:
             values = pd.read_sql_query(sql, con)
         except Exception as e:
@@ -604,27 +608,44 @@ class Report(models.Model):
                 max_in_range = max_row_for
             col += 1
 
+        # named range
+        atext = "A1:{}{}".format(get_column_letter(cols), str(max_in_range))
+        _logger.debug("Named range reference: " + atext)
+        ref = f"{quote_sheetname(worksheet.title)}!{absolute_coordinate(atext)}"
+        _logger.debug("Ref: " + ref)
+        defn = DefinedName(worksheet.title, attr_text=ref)
+        worksheet.defined_names.add(defn)
+
         # define named range for every col
-        # col = 1
-        # for head in header:
-        #     atext = 'OFFSET(' + worksheet.title + '!$' + get_column_letter(worksheet.cell(row=1,column=col).column) + \
-        #             '$2,,,' + str(max_in_range - 1) + ')'
-        #     _logger.debug("Named range reference: " + atext)
-        #     #ToDo: korjaa range
-        #     try:
-        #         my_range = workbook.defined_names[head]
-        #         my_range.attr_text = atext
-        #         _logger.debug('Modified Range: ' + head + " " + my_range.attr_text)
-        #     except:
-        #         _logger.debug('Range does not exist')
-        #         ref = "{quote_sheetname(worksheet.title)}!{absolute_coordinate('$A$2')}"
-        #         defn = DefinedName("global_range", attr_text=ref)
-        #         workbook.create_named_range(head,worksheet, '$A$2')
-        #         my_range = workbook.defined_names[head]
-        #         my_range.attr_text = atext
-        #         _logger.debug('Created New Range: ' + head + " " + my_range.attr_text)
-        #
-        #     col += 1
+        col = 1
+        for head in header:
+            atext = '=OFFSET(' + worksheet.title + '!$' + get_column_letter(worksheet.cell(row=1,column=col).column) + \
+                        '$2,,,' + str(max_in_range - 1) + ')'
+            _logger.debug("Named range reference: " + atext)
+            #ToDo: korjaa range
+            # ref = f"{quote_sheetname(worksheet.title)}!{absolute_coordinate(atext)}"
+            # ref = f"{quote_sheetname(worksheet.title)}!{atext}"
+            # defn = DefinedName(worksheet.title, attr_text=ref)
+            # ref = f"{quote_sheetname(worksheet.title)}!{atext}"
+            defn = DefinedName(head, attr_text=atext)
+            worksheet.defined_names.add(defn)
+            # try:
+            #     my_range = worksheet.defined_names[head]
+            #     my_range.attr_text = atext
+            #     _logger.debug('Modified Range: ' + head + " " + my_range.attr_text)
+            # except:
+            #     _logger.debug('Range does not exist')
+            #     ref = "{quote_sheetname(worksheet.title)}!{absolute_coordinate('$A$2')}"
+            #     defn = DefinedName("global_range", attr_text=ref)
+            #     # workbook.create_named_range(head,worksheet, '$A$2')
+            #     worksheet.defined_names.add(defn)
+            #     my_range = workbook.defined_names[head]
+            #     my_range.attr_text = atext
+            #     _logger.debug('Created New Range: ' + head + " " + my_range.attr_text)
+
+            col += 1
+
+
         style = TableStyleInfo(name="TableStyleMedium9", showFirstColumn=False,
                                showLastColumn=False, showRowStripes=True, showColumnStripes=False)
         tableref = "A1:{}{}".format(get_column_letter(cols), str(max_in_range))
