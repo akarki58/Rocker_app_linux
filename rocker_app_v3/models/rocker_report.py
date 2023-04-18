@@ -279,7 +279,9 @@ class Report(models.Model):
             page_elements = '1'
             slides_created = 0
 
-            con = self._create_connection(self.database)
+            con = None
+            engine = None
+            engine, con = self._create_connection(self.database)
 
             if not pp_title:
                 slide = prs.slides.add_slide(prs.slide_layouts[6])   # blanc de blanc
@@ -293,7 +295,7 @@ class Report(models.Model):
             if con:
                 _logger.debug('Populate single Powerpoint report')
                 # one per page
-                slide, element_written = self._populate_pp_sql(self, con, prs, slide, page_elements, pp_title, self.select_clause, self.column_headings, cnt_report, element_written, collection, self.lang)
+                slide, element_written = self._populate_pp_sql(self, engine, con, prs, slide, page_elements, pp_title, self.select_clause, self.column_headings, cnt_report, element_written, collection, self.lang)
             else:
                 raise exceptions.ValidationError('No DB connection')
         elif self.report_type == 'collection':
@@ -311,7 +313,9 @@ class Report(models.Model):
             slides_created = 0
             collection = True
             for report in self.report_ids:
-                con = self._create_connection(report.database)
+                con = None
+                engine = None
+                engine, con = self._create_connection(report.database)
                 if (cnt_report == 1):
                     if not pp_title:
                          slide = prs.slides.add_slide(prs.slide_layouts[6])   # blanc de blanc
@@ -323,7 +327,7 @@ class Report(models.Model):
                     _logger.debug('Report number ' +  str(cnt_report) + ' on Slide: ' + str(slides_created))
                 if con:
                     _logger.debug('PowerPoint Collection report populate')
-                    slide, element_written = self._populate_pp_sql(report, con, prs, slide, page_elements, pp_title, report.select_clause, report.column_headings, cnt_report, element_written, collection, report.lang)
+                    slide, element_written = self._populate_pp_sql(report, engine, con, prs, slide, page_elements, pp_title, report.select_clause, report.column_headings, cnt_report, element_written, collection, report.lang)
                 else:
                     raise exceptions.ValidationError('No DB connection')
                 cnt_report += 1
@@ -416,11 +420,13 @@ class Report(models.Model):
         if self.report_type == 'single':
             worksheet = self._worksheet(workbook, self.sheet_name)
             _logger.debug('Single report, using sheet: ' + self.sheet_name)
-            con = self._create_connection(self.database)
+            con = None
+            engine = None
+            engine, con = self._create_connection(self.database)
             # let's fill with data
             if con:
                 _logger.debug('Populate single report')
-                self._populate_sql(con, workbook, worksheet, self.select_clause, self.column_headings, self.lang)
+                self._populate_sql(engine, con, workbook, worksheet, self.select_clause, self.column_headings, self.lang)
             else:
                 raise exceptions.ValidationError('No DB connection')
         elif self.report_type == 'collection':
@@ -431,11 +437,13 @@ class Report(models.Model):
                     raise exceptions.ValidationError('In Collections sheet names are manadatory')
                 worksheet = self._worksheet(workbook, sheetname)
                 _logger.debug('Collection report, using sheet: ' + report.sheet_name)
-                con = self._create_connection(report.database)
+                con = None
+                engine = None
+                engine, con = self._create_connection(report.database)
                 # let's fill with data
                 if con:
                     _logger.debug('Collection report populate')
-                    self._populate_sql(con, workbook, worksheet, report.select_clause, report.column_headings, report.lang)
+                    self._populate_sql(engine, con, workbook, worksheet, report.select_clause, report.column_headings, report.lang)
                 else:
                     raise exceptions.ValidationError('No DB connection')
 
@@ -548,14 +556,15 @@ class Report(models.Model):
         _password = _database_record.password
         _logger.info('Connecting to ' + _database_record.name)
         con = None
-        con = rocker_connection.rocker_connection.create_connection(_database_record)
+        engine = None
+        engine, con = rocker_connection.rocker_connection.create_connection(_database_record)
         if con is not None:
             _logger.info('Database Connect OK')
-            return con
+            return engine, con
         else:
             raise exceptions.ValidationError('Exception, No Database connection')
 
-    def _populate_sql(self, con, workbook, worksheet, sql, headings, language, context=None):
+    def _populate_sql(self, engine, con, workbook, worksheet, sql, headings, language, context=None):
 
         # for tbl in worksheet.tables:
         #     _logger.debug('Warning: Sheet ' + worksheet.title + ' has a table ' + tbl + '. If it is overlapping with data area, Excel might be corrupted')
@@ -586,8 +595,17 @@ class Report(models.Model):
                 worksheet.cell(row=i,column=j).value = None
         _logger.debug ("Adding data to " + worksheet.title)
         #todo use SQLAlchemy
+        # with engine.connect() as conn:
+        #     df = pd.read_sql('SELECT * FROM table_name WHERE condition', con=conn)
         try:
-            values = pd.read_sql_query(sql, con)
+            if engine != None:
+                # sqlalchemy text(sql)
+                from sqlalchemy.sql import text
+                with engine.connect() as conn:
+                    query = conn.execute(text(sql))
+                values = pd.DataFrame(query.fetchall())
+            else:
+                values = pd.read_sql_query(sql, con)
         except Exception as e:
             raise exceptions.ValidationError('SQL Error!\n\n' + str(e))
 
@@ -668,10 +686,17 @@ class Report(models.Model):
 
         # end
         if con is not None:
-            con.close()
+            # con.close()
+            if engine:
+                con.invalidate()
+                con.close()
+                engine.dispose()
+            else:
+                con.close()
+
         return True
 
-    def _populate_pp_sql(self, report, con, prs, slide, page_elements, pp_title, sql, headings, cnt_report, last_element_written, collection, language, context=None):
+    def _populate_pp_sql(self, report, engine, con, prs, slide, page_elements, pp_title, sql, headings, cnt_report, last_element_written, collection, language, context=None):
         from pptx.enum.chart import XL_CHART_TYPE
         from pptx.enum.chart import XL_LEGEND_POSITION
         from pptx.enum.chart import XL_LABEL_POSITION
@@ -723,13 +748,27 @@ class Report(models.Model):
 
 
         # select
-        cur = con.cursor()
         try:
-            cur.execute(sql)
-        except Exception as e:
-            raise exceptions.ValidationError('Error in Select clause!\n\n' + str(e))
+            if engine != None:
+                # sqlalchemy text(sql)
+                # from sqlalchemy.sql import text
+                con = engine.raw_connection()
+                cur = con.cursor()
+                try:
+                    cur.execute(sql)
+                except Exception as e:
+                    raise exceptions.ValidationError('Error in Select clause!\n\n' + str(e))
+                records = cur.fetchall()
+            else:
+                cur = con.cursor()
+                try:
+                    cur.execute(sql)
+                except Exception as e:
+                    raise exceptions.ValidationError('Error in Select clause!\n\n' + str(e))
 
-        records = cur.fetchall()
+                records = cur.fetchall()
+        except Exception as e:
+            raise exceptions.ValidationError('SQL Error!\n\n' + str(e))
         _logger.debug('Records: ' )
         _logger.debug(records)
         # language selection
@@ -1026,7 +1065,13 @@ class Report(models.Model):
 
          # end
         if con is not None:
-            con.close()
+            # con.close()
+            if engine:
+                con.invalidate()
+                con.close()
+                engine.dispose()
+            else:
+                con.close()
         #return True
         return slide, element_written
 

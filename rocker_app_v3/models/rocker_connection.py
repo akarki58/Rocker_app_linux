@@ -35,6 +35,7 @@ class rocker_connection():
         _database_record = self
         _datasource = _database_record.name
         _driver = _database_record.driver
+        _sqlalchemydriver = _database_record.sqlalchemydriver
         _odbcdriver = _database_record.odbcdriver
         _sid = _database_record.database
         _database = _database_record.database
@@ -44,6 +45,7 @@ class rocker_connection():
         _password = _database_record.password
 
         con = None
+        engine = None
         _logger.info('Connecting to database: ' + _database)
 
         try:
@@ -54,8 +56,26 @@ class rocker_connection():
                 except:
                     raise exceptions.ValidationError('No Postgres drivers')
                 con = psycopg2.connect(host=_host, port=_port, database=_database, user=_user, password=_password)
-                # con = sqlalchemy.create_engine(f"postgresql+psycopg2://{_user}:{_password}@{_host}:{_port}/{_database}")
 
+            elif _driver == "sqlalchemy":
+                # from sqlalchemy.sql import text
+                # sql = '''
+                #     SELECT * FROM table;
+                # '''
+                # with engine.connect() as conn:
+                #     query = conn.execute(text(sql))
+                # df = pd.DataFrame(query.fetchall())
+                #
+                #
+                # url = 'postgresql+psycopg2://username:password@host:port/database'
+                _logger.info('Using SQLAlchemy')
+                try:
+                    import sqlalchemy
+                except:
+                    raise exceptions.ValidationError('No SQLAlchemy drivers')
+                #_logger.info(f"{_sqlalchemydriver}://{_user}:{_password}@{_host}:{_port}/{_database}")
+                engine = sqlalchemy.create_engine(f"{_sqlalchemydriver}://{_user}:{_password}@{_host}:{_port}/{_database}")
+                con = engine.raw_connection()
             elif _driver == "mysql":
                 try:
                     import mysql.connector
@@ -108,4 +128,4 @@ class rocker_connection():
         except:
             _logger.debug('Database connection failed')
             raise exceptions.ValidationError('Database connection failed')
-        return con
+        return engine, con
