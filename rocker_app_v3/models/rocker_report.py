@@ -594,7 +594,7 @@ class Report(models.Model):
             for j in range (1,len(header)+1):
                 worksheet.cell(row=i,column=j).value = None
         _logger.debug ("Adding data to " + worksheet.title)
-        #todo use SQLAlchemy
+        # use SQLAlchemy
         # with engine.connect() as conn:
         #     df = pd.read_sql('SELECT * FROM table_name WHERE condition', con=conn)
         try:
