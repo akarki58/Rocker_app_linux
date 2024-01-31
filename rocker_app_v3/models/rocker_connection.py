@@ -47,79 +47,76 @@ class rocker_connection():
         con = None
         engine = None
         _logger.info('Connecting to database: ' + _database)
+        try:
+            if _driver == 'postgresql':
+                _logger.info('Using PostgreSQL')
+                import psycopg2
+            elif _driver == "sqlalchemy":
+                _logger.info('Using SQLAlchemy')
+                import sqlalchemy
+            elif _driver == "mysql":
+                _logger.info('Using MySQL')
+                import mysql.connector
+            elif _driver == "mariadb":
+                _logger.info('Using MariaDB')
+                import mysql.connector
+            elif _driver == "oracle":
+                _logger.info('Using Oracle')
+                # _logger.debug(_user + '/' + _password + '@' + _host + ':' + _port + '/' + _sid)
+                import cx_Oracle
+            elif _driver == "sqlserver":
+                _logger.info('Using SQLServer')
+                import pyodbc
+            elif _driver == "odbc":
+                _logger.info('Using ODBC')
+                import pyodbc
+            else:
+                raise exceptions.ValidationError('Driver not supported')
+        except ModuleNotFoundError as moduleErr:
+            print("[Error]: Failed to import (Module Not Found) {}.".format(moduleErr.args[0]))
+            raise exceptions.ValidationError(
+                "[Error]: Failed to import (Module Not Found) {}.".format(moduleErr.args[0]))
+            sys.exit(1)
+        except ImportError as impErr:
+            print("[Error]: Failed to import (Import Error) {}.".format(impErr.args[0]))
+            raise exceptions.ValidationError("[Error]: Failed to import (Import Error) {}.".format(impErr.args[0]))
+            sys.exit(1)
 
         try:
             if _driver == 'postgresql':
-                try:
-                    import psycopg2
-                    # import sqlalchemy
-                except:
-                    raise exceptions.ValidationError('No Postgres drivers')
-                con = psycopg2.connect(host=_host, port=_port, database=_database, user=_user, password=_password)
+                 con = psycopg2.connect(host=_host, port=_port, database=_database, user=_user, password=_password)
 
             elif _driver == "sqlalchemy":
-                # from sqlalchemy.sql import text
-                # sql = '''
-                #     SELECT * FROM table;
-                # '''
-                # with engine.connect() as conn:
-                #     query = conn.execute(text(sql))
-                # df = pd.DataFrame(query.fetchall())
-                #
-                #
-                # url = 'postgresql+psycopg2://username:password@host:port/database'
-                _logger.info('Using SQLAlchemy')
                 try:
-                    import sqlalchemy
-                except:
-                    raise exceptions.ValidationError('No SQLAlchemy drivers')
-                #_logger.info(f"{_sqlalchemydriver}://{_user}:{_password}@{_host}:{_port}/{_database}")
-                engine = sqlalchemy.create_engine(f"{_sqlalchemydriver}://{_user}:{_password}@{_host}:{_port}/{_database}")
-                con = engine.raw_connection()
+                    engine = sqlalchemy.create_engine(f"{_sqlalchemydriver}://{_user}:{_password}@{_host}:{_port}/{_database}")
+                    con = engine.raw_connection()
+                except Exception as err:
+                    raise exceptions.ValidationError('SQLAlchemy drivers\n'+err)
             elif _driver == "mysql":
-                try:
-                    import mysql.connector
-                except:
-                    raise exceptions.ValidationError('No MySQL drivers')
                 con = mysql.connector.connect(host=_host, port=_port, database=_database, user=_user,
                                               password=_password)
             elif _driver == "mariadb":
-                try:
-                    import mysql.connector
-                except:
-                    raise exceptions.ValidationError('No MariaDB drivers')
                 con = mysql.connector.connect(host=_host, port=_port, database=_database, user=_user,
                                               password=_password)
             elif _driver == "oracle":
                 _logger.debug('Try Oracle')
-                _logger.debug(_user + '/' + _password + '@' + _host + ':' + _port + '/' + _sid)
+                # _logger.debug(_user + '/' + _password + '@' + _host + ':' + _port + '/' + _sid)
                 try:
-                    import cx_Oracle
                     # cx_Oracle.init_oracle_client()
                     con = cx_Oracle.connect(_user + '/' + _password + '@' + _host + ':' + _port + '/' + _sid)
                 except Exception as err:
                     _logger.debug("Whoops in Oracle connect!")
                     _logger.debug(err)
                     raise exceptions.ValidationError('Oracle drivers\n'+err)
-
-            # con = cx_Oracle.connect("user", "passwd", "192.168.1.88:1521/xe")
             elif _driver == "sqlserver":
-                try:
-                    import pyodbc
-                except:
-                    raise exceptions.ValidationError('No SQLServer (ODBC) drivers')
-                _logger.debug(
-                    'DRIVER={' + _odbcdriver + '};SERVER=' + _host + ';DATABASE=' + _database + ';UID=' + _user + ';PWD=' + _password)
+                # _logger.debug(
+                #     'DRIVER={' + _odbcdriver + '};SERVER=' + _host + ';DATABASE=' + _database + ';UID=' + _user + ';PWD=' + _password)
                 con = pyodbc.connect(
                     'DRIVER={' + _odbcdriver + '};SERVER=' + _host + ';DATABASE=' + _database + ';UID=' + _user + ';PWD=' + _password)
                 self._sqldriver = 'sqlserver'
             elif _driver == "odbc":
-                try:
-                    import pyodbc
-                except:
-                    raise exceptions.ValidationError('No ODBC drivers')
-                _logger.debug(
-                    'DRIVER={' + _odbcdriver + '};SERVER=' + _host + ';DATABASE=' + _database + ';UID=' + _user + ';PWD=' + _password)
+                # _logger.debug(
+                #     'DRIVER={' + _odbcdriver + '};SERVER=' + _host + ';DATABASE=' + _database + ';UID=' + _user + ';PWD=' + _password)
                 con = pyodbc.connect(
                     'DRIVER={' + _odbcdriver + '};SERVER=' + _host + ';DATABASE=' + _database + ';UID=' + _user + ';PWD=' + _password)
                 self._sqldriver = 'odbc'

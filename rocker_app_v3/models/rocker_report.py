@@ -87,12 +87,12 @@ class Report(models.Model):
                                       'Report in Collections', domain="[('report_type', '=', 'collection'),('report_application','=', report_application)]")
     column_headings = fields.Char('Column headings', default='Stage; Count', help="Column headings separated with ;")
     select_clause = fields.Text('Select', default=
-    """select ns.name, count(*) 
-    from note_note nn
-    join note_stage_rel nsr on nsr.note_id = nn.id
-    join note_stage ns on ns.id = nsr.stage_id 
-    group by ns.name, ns.sequence
-    order by ns.sequence""")
+    """select ptt.name, count(*)
+    from public.project_task pt
+    join public.project_task_user_rel ptur on ptur.task_id = pt.id
+    join public.project_task_type ptt on ptt.id = ptur.stage_id
+	group by ptt.name
+    order by ptt.name""")
     sheet_name = fields.Char('Excel Sheet Name', default='Data')
     report_template = fields.Binary('Report template', help="")
     report = fields.Binary('Lastest Report')
@@ -229,9 +229,18 @@ class Report(models.Model):
             }
  
     def export_ppt(self, context=None):
-        from pptx import Presentation
-        from pptx.chart.data import CategoryChartData
-        from pptx.enum.chart import XL_CHART_TYPE
+        try:
+            from pptx import Presentation
+            from pptx.chart.data import CategoryChartData
+            from pptx.enum.chart import XL_CHART_TYPE
+        except ModuleNotFoundError as moduleErr:
+            print("[Error]: Failed to import (Module Not Found) {}.".format(moduleErr.args[0]))
+            raise exceptions.ValidationError("[Error]: Failed to import (Module Not Found) {}.".format(moduleErr.args[0]))
+            sys.exit(1)
+        except ImportError as impErr:
+            print("[Error]: Failed to import (Import Error) {}.".format(impErr.args[0]))
+            raise exceptions.ValidationError("[Error]: Failed to import (Import Error) {}.".format(impErr.args[0]))
+            sys.exit(1)
 
         filename = ''
         pp_title = ''
