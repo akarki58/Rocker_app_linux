@@ -6,7 +6,7 @@
  'license': 'AGPL-3',
  'category': 'Rocker/Reporting',
  'sequence': 23,
- 'version': '17.0.1.0.1',
+ 'version': '17.0.1.1',
  'data': [
   'security/rocker_security.xml',
   'security/ir.model.access.csv',
