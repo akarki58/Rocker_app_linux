@@ -12,13 +12,12 @@
 #    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #    GNU AFFERO GENERAL PUBLIC LICENSE (AGPL v3) for more details.
 #
-#    You should have received a copy of the GNU AFFERO GENERAL PUBLIC LICENSE
-#    (AGPL v3) along with this program.
-#    If not, see <http://www.gnu.org/licenses/>.
 #
 # pip3 install python-pptx
 # pip3 install openpyxl
 # pip3 install pandas
+#
+# 2025-01-23
 #
 #############################################################################
 
@@ -85,14 +84,13 @@ class Report(models.Model):
     sequence = fields.Integer(string='Sequence', default=10)
     collection_ids = fields.Many2many('rocker.report', 'rocker_report_collection', 'report_id', 'collection_id',
                                       'Report in Collections', domain="[('report_type', '=', 'collection'),('report_application','=', report_application)]")
-    column_headings = fields.Char('Column headings', default='Stage; Count', help="Column headings separated with ;")
+    column_headings = fields.Char('Column headings', default='Project; Task Count', help="Column headings separated with ;")
     select_clause = fields.Text('Select', default=
-    """select ptt.name, count(*)
+    """select pp.name, count(*)
     from public.project_task pt
-    join public.project_task_user_rel ptur on ptur.task_id = pt.id
-    join public.project_task_type ptt on ptt.id = ptur.stage_id
-	group by ptt.name
-    order by ptt.name""")
+    join public.project_project pp on pp.id = pt.project_id
+	group by pp.name
+    order by pp.name""")
     sheet_name = fields.Char('Excel Sheet Name', default='Data')
     report_template = fields.Binary('Report template', help="")
     report = fields.Binary('Lastest Report')
@@ -211,9 +209,10 @@ class Report(models.Model):
     #     return super(Report, self).write(vals)
 
     def export_report(self, context=None):
-        if self.active != True:
+        _logger.info('Export report')
+        if not self.active:
             raise exceptions.ValidationError('Report is not active or you are not allowed to view it!')
-        _logger.info('Rocker reporting / Executing report: ' + self.name)
+        _logger.info('Rocker reporting / Executing report: ' + str(self.name))
         if self.report_application == 'excel':
             self.export_xls(self)
         elif self.report_application == 'powerpoint':
@@ -484,6 +483,7 @@ class Report(models.Model):
             'web.base.url') + '/web?#model=rocker.report&view_type=list&menu_id=' + str(
             self.env.ref('rocker_app_v3.rocker_menu').id) + '&action=' + str(
             self.env.ref('rocker_app_v3.rocker_report_execute_request').id) + '&id=' + str(self.id)
+        _logger.debug('Exec link: ' + execlink)
         # file.seek(0)
         self.sudo().write({
             'file_name': odoo_filename,
@@ -537,14 +537,14 @@ class Report(models.Model):
         aboutsheet.cell(4,2).value = 'Date executed:'
         aboutsheet.cell(4,3).value = fields.datetime.now()
         aboutsheet.cell(4,3).alignment = Alignment(horizontal='left')
-        aboutsheet.cell(5,2).value = 'Datasource:'
-        aboutsheet.cell(5,3).value = self.name
+        aboutsheet.cell(5, 2).value = 'Report Name:'
+        aboutsheet.cell(5, 3).value = self.name
         if self.report_type == 'collection':
             aboutsheet.cell(6,2).value = 'Type:'
             aboutsheet.cell(6,3).value = 'Collection'
         else:
-            aboutsheet.cell(6,2).value = 'SQL:'
-            aboutsheet.cell(6,2).alignment = Alignment(wrap_text=True,vertical='top')
+            aboutsheet.cell(6, 2).value = 'SQL:'
+            aboutsheet.cell(6, 2).alignment = Alignment(wrap_text=True,vertical='top')
             aboutsheet.cell(6,3).value = self.select_clause
             aboutsheet.cell(6,3).alignment = Alignment(wrap_text=True,vertical='top')
         # aboutsheet.Columns.AutoFit()
@@ -682,7 +682,11 @@ class Report(models.Model):
             _logger.debug(tableref)
             resTable = Table(displayName=tableName, ref=tableref)
             resTable.tableStyleInfo = style
-            worksheet.add_table(resTable)
+            try:
+                worksheet.add_table(resTable)
+            except Exception as e:
+                raise exceptions.ValidationError('Can not add sheet!\n\n' + str(e))
+
         else:
             _logger.debug('Try to update table(s)')
             for i, tbl in enumerate(worksheet.tables):
@@ -706,6 +710,7 @@ class Report(models.Model):
         return True
 
     def _populate_pp_sql(self, report, engine, con, prs, slide, page_elements, pp_title, sql, headings, cnt_report, last_element_written, collection, language, context=None):
+        global chart_data
         from pptx.enum.chart import XL_CHART_TYPE
         from pptx.enum.chart import XL_LEGEND_POSITION
         from pptx.enum.chart import XL_LABEL_POSITION
@@ -804,10 +809,10 @@ class Report(models.Model):
 
             if self.element == 'table':
                 if len(row) != len(header):
-                    raise exceptions.ValidationError('Count of headers is not the same as count of data columns\Separate headers with ;\nOr check your SQL')
-                if (r >= rows_per_table):
+                    raise exceptions.ValidationError('Count of headers is not the same as count of data columns\nSeparate headers with ;\nOr check your SQL')
+                if r >= rows_per_table:
                     # create slide , first slide created already in export_ppt
-                    if (element_written == 1):
+                    if element_written == 1:
                         if not pp_title:
                             slide = prs.slides.add_slide(prs.slide_layouts[6])   # blanc de blanc
                         else:
@@ -1343,14 +1348,19 @@ class Report(models.Model):
 
     @api.model
     def _execute_xls(self, context=None):
-        report_id = dict(self._context.get('params', {})).get('id')
-        self = self.env['rocker.report'].search([('id', '=', report_id)])
-        self.export_report()
+        _logger.debug('_execute_xls')
+        # report_id = dict(self._context.get('params', {})).get('id')
+        # _logger.debug('report_id: ' + str(report_id))
+        # 2025
+        report_id = dict(self._context.get('params', {})).get('resId')
+        _logger.debug('report_id: ' + str(report_id))
+        report = self.env['rocker.report'].search([('id', '=', report_id)])
+        report.export_report()
         _logger.debug('Base url: ' + self.env['ir.config_parameter'].sudo().get_param('web.base.url'))
         return {
             'type': 'ir.actions.act_url',
             'name': 'report',
-            'url': '/web/content/rocker.report/%s/report/%s?download=true' % (self.id, self.file_name)
+            'url': '/web/content/rocker.report/%s/report/%s?download=true' % (report.id, report.file_name)
         }
 
     @api.model

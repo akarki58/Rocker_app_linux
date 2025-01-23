@@ -59,6 +59,8 @@ psql
 # GRANT CONNECT ON DATABASEp database_name TO username;
 # GRANT SELECT ON ALL TABLES IN SCHEMA name TO username;
 # odoo installation, dbname was odoo
+sudo su postgres
+psql
 GRANT CONNECT ON DATABASE odoo TO rocker;
 GRANT SELECT ON ALL TABLES IN SCHEMA "public" TO rocker;
 

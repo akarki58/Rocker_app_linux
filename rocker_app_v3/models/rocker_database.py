@@ -12,9 +12,8 @@
 #    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #    GNU AFFERO GENERAL PUBLIC LICENSE (AGPL v3) for more details.
 #
-#    You should have received a copy of the GNU AFFERO GENERAL PUBLIC LICENSE
-#    (AGPL v3) along with this program.
-#    If not, see <http://www.gnu.org/licenses/>.
+##
+# 2025-01-23
 #
 #############################################################################
 
@@ -39,7 +38,7 @@ class rocker_database(models.Model):
     odbcdriver = fields.Char('ODBC driver', required=False, default='SQL Server')
     # sid = fields.Char('Oracle SID', required=False)
     host = fields.Char('Host', required=True, default='127.0.0.1')
-    port = fields.Char('Port', required=False, default='5432')
+    port = fields.Char('Port', required=False, default='5433')
     database = fields.Char('Database or SID ', required=True)
     user = fields.Char('User', required=True, default='openpg')
     password = fields.Char('Password', required=True, default='openpgpwd')
