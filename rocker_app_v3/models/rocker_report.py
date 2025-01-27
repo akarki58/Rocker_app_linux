@@ -86,11 +86,9 @@ class Report(models.Model):
                                       'Report in Collections', domain="[('report_type', '=', 'collection'),('report_application','=', report_application)]")
     column_headings = fields.Char('Column headings', default='Project; Task Count', help="Column headings separated with ;")
     select_clause = fields.Text('Select', default=
-    """select pp.name, count(*)
-    from public.project_task pt
-    join public.project_project pp on pp.id = pt.project_id
-	group by pp.name
-    order by pp.name""")
+    """select initcap(rr.report_application), count(*)
+    from public.rocker_report rr
+    group by rr.report_application""")
     sheet_name = fields.Char('Excel Sheet Name', default='Data')
     report_template = fields.Binary('Report template', help="")
     report = fields.Binary('Lastest Report')
