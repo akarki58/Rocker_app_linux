@@ -84,7 +84,7 @@ class Report(models.Model):
     sequence = fields.Integer(string='Sequence', default=10)
     collection_ids = fields.Many2many('rocker.report', 'rocker_report_collection', 'report_id', 'collection_id',
                                       'Report in Collections', domain="[('report_type', '=', 'collection'),('report_application','=', report_application)]")
-    column_headings = fields.Char('Column headings', default='Project; Task Count', help="Column headings separated with ;")
+    column_headings = fields.Char('Column headings', default='Report type; Count', help="Column headings separated with ;")
     select_clause = fields.Text('Select', default=
     """select initcap(rr.report_application), count(*)
     from public.rocker_report rr
