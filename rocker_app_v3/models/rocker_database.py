@@ -13,7 +13,8 @@
 #    GNU AFFERO GENERAL PUBLIC LICENSE (AGPL v3) for more details.
 #
 ##
-# 2025-01-23
+# 2026-01-17
+
 #
 #############################################################################
 
@@ -33,7 +34,7 @@ class rocker_database(models.Model):
     _sql_constraints = [('unique_name', 'UNIQUE(name)', 'Datasource Name must be unique')]
     driver = fields.Selection(
         [('mysql', 'MySQL'), ('mariadb', 'MariaDB'), ('oracle', 'Oracle'), ('sqlserver', 'SQLServer'), ('odbc', 'ODBC'),
-         ('postgresql', 'PostrgeSQL'), ('sqlalchemy', 'SQLAlchemy')], 'Driver', required=True, default='postgresql')
+         ('postgresql', 'PostrgeSQL'), ('sqlalchemy', 'SQLAlchemy')], 'Driver', required=True, default='sqlalchemy')
     sqlalchemydriver = fields.Char('SQLAlchemy driver', required=False, default='postgresql+psycopg2')
     odbcdriver = fields.Char('ODBC driver', required=False, default='SQL Server')
     # sid = fields.Char('Oracle SID', required=False)

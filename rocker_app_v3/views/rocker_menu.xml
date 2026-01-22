@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--2025-01-23 -->
+<!--2026-01-17 -->
+
 <odoo>
 
     <record id="action_rocker_report" model="ir.actions.act_window">
@@ -9,13 +10,11 @@
         <field name="context">{'search_default_type_group':1}</field>
     </record>
 
-
     <record id="action_rocker_archive" model="ir.actions.act_window">
         <field name="name">Rocker Archive</field>
         <field name="res_model">rocker.archive</field>
         <field name="view_mode">list,form</field>
     </record>
-
 
     <record id="action_rocker_database" model="ir.actions.act_window">
         <field name="name">Rocker Databases</field>
@@ -47,7 +46,8 @@
 
     <menuitem id="rocker_menu" 
         name="Rocker Report"
-        groups="rocker_app_v3.rocker_group_user"/>
+        groups="rocker_app_v3.rocker_group_user"
+    />
     <menuitem id="menu_rocker_report" 
         name="Reports" 
         action="action_rocker_report" 
@@ -62,14 +62,16 @@
         name="Databases" 
         action="action_rocker_database" 
         parent="rocker_menu" 
-        sequence="30" 
-        groups="rocker_app_v3.rocker_group_manager" />
+        sequence="30"
+        groups="rocker_app_v3.rocker_group_manager"
+    />
     <menuitem id="menu_rocker_executor" 
         name="Executor" 
         action="rocker_executor_act" 
         parent="rocker_menu" 
-        sequence="40" 
-        groups="rocker_app_v3.rocker_group_manager" />
+        sequence="40"
+        groups="rocker_app_v3.rocker_group_manager"
+    />
     <menuitem id="menu_rocker_help" 
         name="Help" 
         parent="rocker_menu" 
@@ -78,8 +80,9 @@
         name="Test Excel creation" 
         action="action_test_excel" 
         parent="menu_rocker_help" 
-        sequence="10" 
-        groups="rocker_app_v3.rocker_group_manager" />
+        sequence="10"
+        groups="rocker_app_v3.rocker_group_manager"
+    />
     <menuitem id="menu_rocker_about" 
         name="About Rocker Reporting..." 
         action="action_rocker_about_prog" 
